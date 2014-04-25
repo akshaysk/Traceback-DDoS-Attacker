@@ -86,13 +86,6 @@ void send_start_marking_msg(char *router_ip, int tcpport)
 		exit(0);
 	}
 	printf("StartMarking message is sent");
-	if(read(fd, recv_message, BUFSIZE) < 0)
-	{
-		close(fd);
-		perror("Endhost: Error in read() for victim client");
-		exit(0);
-	}
-	printf("\nPhase 3: Victim Client received ACK \n");
 	close(fd);
 
 }
