@@ -1,0 +1,38 @@
+***********************************************************************************
+	Name: Akshay Sanjay Kale
+	Course: Computer Communication (CSCI 551)
+	Final Project: Traceback path of DDoS Attacker
+***********************************************************************************	
+
+This file describes how to make use of the traffana assignment code you have at your disposal.
+
+1]Source code Files:
+1. Header Files:
+	1.1 traffana.h
+
+2. C files:
+	2.1 traffana.c
+
+3. Makefile
+
+
+2]Instructions to Compile code:
+1. make traffana
+	Creates traffana executable
+
+3. make clean
+	Deletes all temporary object files and executables
+
+
+3]Description of source files
+
+1. traffana.h
+	Contains listing of all headers files and definitions of important datastructures of ip_packet, command_line_args.
+ 
+2. traffana.c
+	Includes implementation of traffic sniffing tool. Includes implementation for command line parsing, 
+	capturing packets and maintaining all statistics that need to be displayed.
+
+************************************************************************************
+
+
