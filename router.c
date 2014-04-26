@@ -1,6 +1,5 @@
 #include "router.h"
 #include "log.h"
-
 void parse_command_line(int argc, char **argv, struct command_line_args *ob)
 {
 	int opt = 0, longIndex = 0;
@@ -43,12 +42,12 @@ void parse_command_line(int argc, char **argv, struct command_line_args *ob)
 	opt = getopt_long_only(argc, argv, ":e:t:u:p:", longOpts, &longIndex);
 	}
 
-	if(ob->routerfile == NULL || ob->tcpport == 0 || ob->udpport == 0 || ob->stopthresh == 0)
+	if(ob->prob == 0 || ob->tcpport == 0 || ob->udpport == 0 || ob->epoch == 0)
 		LOG(stderr, ERROR, "usage: router [-e epoch] [-t port] [-u por] [-p prob] \n");
 
 }
 
-void wait_for_startMarking(struct command_line_args *object)
+void wait_for_startMarking(struct ip_tcp_port *object)
 {
 	int fd, rqst,len;
 	struct hostent *router_ip_addr;
@@ -66,8 +65,8 @@ void wait_for_startMarking(struct command_line_args *object)
 
 	memset((char*)&my_addr, 0, sizeof(my_addr)); 
 	my_addr.sin_family = AF_INET; 
-	my_addr.sin_port = htons(object->tcpport); 
-	router_ip_addr = gethostbyname("localhost");
+	my_addr.sin_port = htons(object->tcp_port); 
+	router_ip_addr = gethostbyname(object->ip_addr);
 	address = (struct in_addr *)router_ip_addr->h_addr;
 
 	my_addr.sin_addr.s_addr = inet_addr(inet_ntoa(*address));
@@ -102,15 +101,150 @@ void wait_for_startMarking(struct command_line_args *object)
 }
 
 
+void schedule_threads_to_listen(struct command_line_args *object)
+{
+
+	pcap_if_t *alldevs, *d;
+	char errbuf[PCAP_ERRBUF_SIZE];
+	pcap_addr_t *p;
+	struct ip_tcp_port *ip_tcp_object;
+	if (pcap_findalldevs(&alldevs, errbuf) == -1)
+	{
+		fprintf(stderr,"Error in pcap_findalldevs: %s\n", errbuf);
+		exit(1);
+	}
+
+	for(d=alldevs; d; d=d->next)
+	{
+		if (d->addresses)
+		{
+			p = d->addresses;
+			while(p != NULL)
+			{
+				if(p->addr->sa_family == AF_INET)
+				{
+	
+	/*				pthread_t my_thread;
+					ip_tcp_object = (struct ip_tcp_port *)malloc(sizeof(struct ip_tcp_port));
+					ip_tcp_object->tcp_port = object->tcpport; 
+					ip_tcp_object->ip_addr = inet_ntoa(((struct sockaddr_in *)p->addr)->sin_addr);		
+					pthread_create(&my_thread, 0, (void *)wait_for_startMarking, ip_tcp_object);*/
+					no_of_threads++;
+				}
+				p = p->next;
+			}
+			printf("\n");
+		}
+	}
+
+}
+
+
+/*void read_packets(u_char *args, const struct pcap_pkthdr* pkthdr, const u_char* packet) 
+{ 
+	const struct sniff_ip *ip;
+	int version = 0;
+	int size_ip = 0, size_udp = 0;
+	char *payload;
+	char ip_addr[MAXIPADDRLEN];
+	memset(ip_addr, '\0', sizeof(ip_addr));
+	ip = (struct sniff_ip *)(packet + SIZE_ETHERNET);
+	version = ip->ip_vhl >> 4;
+	size_ip = IP_HL(ip)*4;	
+	LOG(stdout, LOGL, "%d\t%d",version, size_ip);
+	if(version != 4)
+		return;
+	if(size_ip < 20)
+		return;
+	LOG(stdout, LOGL, "stage1");
+	if(ip->ip_p == 0x11)
+	{
+		LOG(stdout, LOGL, "stage2");
+		size_udp = sizeof(struct sniff_udp);
+		payload = (char *)(packet + SIZE_ETHERNET + size_ip + size_udp);	
+		if(strstr(payload, "YOURIP"))
+		{
+			strncpy(ip_addr, payload+7,MAXIPADDRLEN);
+			LOG(stdout, LOGL, "Received message from endhost: IP address is %s",ip_addr);
+			exit(0);
+		}
+	}
+
+
+}
+void sniff_packets_for_signature_packet()
+{
+	pcap_t *handle;
+	char errbuf[PCAP_ERRBUF_SIZE];
+	handle = pcap_open_live("wlan0", BUFSIZ, 1, 0, errbuf);
+	if (handle == NULL) {
+		LOG(stderr, ERROR, "Couldn't open device");
+	}
+
+	pcap_loop(handle, -1, read_packets, NULL);
+}
+
+
+
+void check_for_signature_packet_from_endhost(char *router_ip)
+{
+	int count = 0;
+	int fd,len;
+	struct sockaddr_in myAddr, srcAddr;
+	struct hostent *my_ip_addr;
+	struct in_addr *address;
+	char buffer[BUFSIZE];
+//	extern int file_server_exists;
+
+	socklen_t addrlen = sizeof(srcAddr);
+
+	memset(buffer,'\0',BUFSIZE);
+	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) 
+	{ 
+		LOG(stderr, ERROR, "Error: Cannot create socket of directory server");
+	}
+
+	memset((char *)&myAddr, 0, sizeof(myAddr)); 
+	myAddr.sin_family = AF_INET; 
+	
+	my_ip_addr = gethostbyname(router_ip);
+	address = (struct in_addr *)my_ip_addr->h_addr;
+
+	myAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*address));
+	
+	myAddr.sin_port = htons(59089);
+	if (bind(fd, (struct sockaddr *)&myAddr, sizeof(myAddr)) < 0) 
+	{ 
+		LOG(stderr, ERROR, "Error: EndHost tool bind failed");
+	}
+	LOG(stdout, LOGL, "stage1 %d",count++);
+
+	while((len = recvfrom(fd, buffer, BUFSIZE, 0, (struct sockaddr *)&srcAddr, &addrlen))<0)
+	{
+		LOG(stderr, ERROR, "Error in receiving registration data");
+		continue;
+	}
+	
+	LOG(stdout, LOGL, "Router: Router tool has received message: %s",buffer);
+
+}
+*/
+
 int main(int argc, char **argv)
 {
 
 	struct command_line_args object;
-
+	pthread_t thr1, thr2;
 	parse_command_line(argc, argv, &object);
-
-	wait_for_startMarking(&object);
-
+//	start_listening_on_all_ports_for_signature();
+	schedule_threads_to_listen(&object);
+//	sniff_packets_for_signature_packet();
+//	check_for_signature_packet_from_endhost("localhost");
+//	check_for_signature_packet_from_endhost("192.168.1.10");
+//	pthread_create(&thr1, 0, (void *)check_for_signature_packet_from_endhost, "localhost");
+//	pthread_create(&thr2, 0, (void *)check_for_signature_packet_from_endhost, "192.168.1.10");
+//	pthread_join(thr1,0);
+//	pthread_join(thr2,0);	
 	return 0;
 }
 

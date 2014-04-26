@@ -139,14 +139,70 @@ void receive_udp_traceback(struct command_line_args *object)
 }
 
 
+void inform_router_ip(char *router_ip, int tcpport)
+{
+	struct sockaddr_in myAddr,routerAddr;
+	int fd, port_no = 60089;
+	char my_message[BUFSIZE];
+	struct hostent *client_ip_addr, *router_ip_addr;
+	struct in_addr * address;
+	memset(my_message,0,BUFSIZE);
+	LOG(stdout, LOGL, "stage1");
+	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) 
+	{ 
+		perror("Phase 2: Error cannot create client server socket\n");
+		exit(0);
+	}
+	memset((char *)&myAddr, 0, sizeof(myAddr)); 
+	myAddr.sin_family = AF_INET; 
+	client_ip_addr = gethostbyname("localhost");
+	address = (struct in_addr *)client_ip_addr->h_addr;
+
+	myAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*address));
+	
+	myAddr.sin_port = htons(port_no);
+
+	if(bind(fd, (struct sockaddr *)&myAddr, sizeof(myAddr)) < 0) 
+	{ 
+		perror("\nPhase 2: Client bind failed\n");
+		exit(0);
+	}
+	LOG(stdout, LOGL, "stage2");
+
+	
+	memset((char *)&routerAddr, 0, sizeof(routerAddr)); 
+	routerAddr.sin_family = AF_INET; 
+// 	router_ip_addr = gethostbyname(router_ip);
+	router_ip_addr = gethostbyname(router_ip);
+	address = (struct in_addr *)router_ip_addr->h_addr;
+
+	routerAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*address));
+	
+	routerAddr.sin_port = htons(59089);
+	LOG(stdout, LOGL, "stage2");
+
+	snprintf(my_message,BUFSIZE,"YOURIP %s",inet_ntoa(*address));	
+	if(sendto(fd, my_message, strlen(my_message), 0, (struct sockaddr *)&routerAddr, sizeof(routerAddr)) < 0) 
+		perror("Phase 1: Error in sendto() for client server");
+
+}
+
 void send_message_routers(struct command_line_args *object)
 {
 
 	FILE *fp = fopen(object->routerfile, "r");
 	char router_ip[MAXIPADDRLEN];
+	int len = 0;
+	memset(router_ip, '\0', MAXIPADDRLEN);
 	while(fgets(router_ip, MAXIPADDRLEN, fp) != NULL)
 	{
-		send_start_marking_msg(router_ip, object->tcpport);
+		len = strlen(router_ip);
+		router_ip[len - 1] = '\0';
+		printf("%s,",router_ip);
+		LOG(stdout, LOGL, "Router Ip : %s, TCP Port: %d",router_ip, object->tcpport);
+		inform_router_ip(router_ip, object->tcpport);
+	//	sleep(2);
+	//	send_start_marking_msg(router_ip, object->tcpport);
 	}
 	
 }
@@ -162,7 +218,7 @@ void check_for_attack(struct command_line_args *object)
 
 	socklen_t addrlen = sizeof(srcAddr);
 
-	memset(buffer,0,BUFSIZE);
+	memset(buffer,'\0',BUFSIZE);
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) 
 	{ 
 		LOG(stderr, ERROR, "Error: Cannot create socket of directory server");
@@ -190,6 +246,7 @@ void check_for_attack(struct command_line_args *object)
 	if(strncmp(buffer, "Attack_Detected", strlen(buffer)) == 0)
 	{
 		attack_indication = 1;
+		LOG(stdout, LOGL, "received attack detected packet");
 		send_message_routers(object);
 	}
 	

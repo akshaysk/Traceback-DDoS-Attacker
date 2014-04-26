@@ -15,6 +15,13 @@ struct command_line_args
 	int udpport, tcpport;
 	double prob, epoch;
 };
-FILE *fp_log;
 
+struct ip_tcp_port
+{
+	int tcp_port;
+	char *ip_addr;
+};
+
+FILE *fp_log;
+int no_of_threads;
 #endif

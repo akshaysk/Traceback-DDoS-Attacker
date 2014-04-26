@@ -348,6 +348,7 @@ void count_flow(u_char *object, const struct sniff_ip *ip, const u_char *packet)
 	char *ip_string;
 	int src_ip_len = 0, dst_ip_len = 0;
 	int size_ip = 0;
+	char src_ip_addr[MAXIPADDRLEN], dest_ip_addr[MAXIPADDRLEN];
 	struct command_line_args *obj = (struct command_line_args *)object;
 	size_ip = IP_HL(ip)*4;	
 	if(ip->ip_p == 0x06 || ip->ip_p == 0x11)
@@ -386,7 +387,12 @@ void count_flow(u_char *object, const struct sniff_ip *ip, const u_char *packet)
 		}
 			
 		append_to_flow_list(ip_string,((struct command_line_args *)object)->tuple);
-		maintain_src_counts(inet_ntoa(src_addr), inet_ntoa(dst_addr), src_ip_len, dst_ip_len);
+		
+		memset(src_ip_addr,'\0',MAXIPADDRLEN);
+		memset(dest_ip_addr,'\0',MAXIPADDRLEN);
+		strncpy(src_ip_addr, inet_ntoa(src_addr), MAXIPADDRLEN);
+		strncpy(dest_ip_addr, inet_ntoa(dst_addr), MAXIPADDRLEN);
+		maintain_src_counts(src_ip_addr, dest_ip_addr, src_ip_len, dst_ip_len);
 		max_no_sources = find_max_source_count();
 	}
 
