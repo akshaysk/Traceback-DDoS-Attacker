@@ -47,6 +47,42 @@ void parse_command_line(int argc, char **argv, struct command_line_args *ob)
 
 }
 
+
+void delete_thread_list()
+{
+	struct thread_list *p = thread_list_head;
+	while(p != NULL)
+	{
+		thread_list_head = thread_list_head->next;
+		p->next = NULL;
+		free(p);
+		p = thread_list_head;
+	}
+
+}
+
+void kill_rest_of_threads(int thread_id)
+{
+
+	struct thread_list *p = thread_list_head;
+	while(p!=NULL)
+	{
+		if(p->thread_id != thread_id)
+		{
+			pthread_cancel(p->thread);
+		}
+		p = p->next;
+	}
+	delete_thread_list();
+
+}
+
+void startMarking()
+{
+
+
+}
+
 void wait_for_startMarking(struct ip_tcp_port *object)
 {
 	int fd, rqst,len;
@@ -96,10 +132,46 @@ void wait_for_startMarking(struct ip_tcp_port *object)
 	}
 	if(strncmp(buffer, "startMarking", sizeof(buffer)) == 0)
 	{
-
+		kill_rest_of_threads(object->thread_id);
+		startMarking();
 	}	
 }
 
+struct thread_list * create_node(int thread_id, int tcpport, char *ip_addr)
+{
+	struct thread_list * newNode = (struct thread_list *)malloc(sizeof(struct thread_list));
+	if(!newNode)
+	{
+		LOG(stderr, ERROR, "Error in allocating new node");
+	}
+	newNode->thread_id = thread_id;
+	newNode->next = NULL;
+		
+	struct ip_tcp_port ip_tcp_object;
+	memset((char *)&ip_tcp_object, '\0', sizeof(struct ip_tcp_port));
+	ip_tcp_object.tcp_port = tcpport; 
+	ip_tcp_object.ip_addr = ip_addr;		
+	ip_tcp_object.thread_id = thread_id;
+	pthread_create(&newNode->thread, 0, (void *)wait_for_startMarking, &ip_tcp_object);
+	return newNode;
+	
+}
+
+void append_to_thread_list(int thread_id, int tcpport, char *ip_addr)
+{
+	struct thread_list *p;	
+	if(thread_list_head == NULL)
+	{
+		thread_list_head = create_node(thread_id, tcpport, ip_addr);
+		return;
+	}
+	else
+	{
+		p = create_node(thread_id, tcpport, ip_addr);
+		p->next = thread_list_head;
+		thread_list_head = p;
+	}
+}
 
 void schedule_threads_to_listen(struct command_line_args *object)
 {
@@ -107,7 +179,6 @@ void schedule_threads_to_listen(struct command_line_args *object)
 	pcap_if_t *alldevs, *d;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_addr_t *p;
-	struct ip_tcp_port *ip_tcp_object;
 	if (pcap_findalldevs(&alldevs, errbuf) == -1)
 	{
 		fprintf(stderr,"Error in pcap_findalldevs: %s\n", errbuf);
@@ -124,12 +195,9 @@ void schedule_threads_to_listen(struct command_line_args *object)
 				if(p->addr->sa_family == AF_INET)
 				{
 	
-	/*				pthread_t my_thread;
-					ip_tcp_object = (struct ip_tcp_port *)malloc(sizeof(struct ip_tcp_port));
-					ip_tcp_object->tcp_port = object->tcpport; 
-					ip_tcp_object->ip_addr = inet_ntoa(((struct sockaddr_in *)p->addr)->sin_addr);		
-					pthread_create(&my_thread, 0, (void *)wait_for_startMarking, ip_tcp_object);*/
 					no_of_threads++;
+					append_to_thread_list(no_of_threads, object->tcpport, inet_ntoa(((struct sockaddr_in *)p->addr)->sin_addr));
+					
 				}
 				p = p->next;
 			}
@@ -234,7 +302,6 @@ int main(int argc, char **argv)
 {
 
 	struct command_line_args object;
-	pthread_t thr1, thr2;
 	parse_command_line(argc, argv, &object);
 //	start_listening_on_all_ports_for_signature();
 	schedule_threads_to_listen(&object);

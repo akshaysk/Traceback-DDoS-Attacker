@@ -56,9 +56,8 @@ void send_start_marking_msg(char *router_ip, int tcpport)
 	struct in_addr * address;
 	socklen_t alen = sizeof(router_addr);
 	
-	char my_message[BUFSIZE], recv_message[BUFSIZE];
+	char my_message[BUFSIZE];
 	memset(my_message, 0, BUFSIZE);
-	memset(recv_message, 0, BUFSIZE);
 	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
 	{ 
 		LOG(stderr, ERROR, "cannot create socket"); 
@@ -139,7 +138,7 @@ void receive_udp_traceback(struct command_line_args *object)
 }
 
 
-void inform_router_ip(char *router_ip, int tcpport)
+/*void inform_router_ip(char *router_ip, int tcpport)
 {
 	struct sockaddr_in myAddr,routerAddr;
 	int fd, port_no = 60089;
@@ -186,6 +185,7 @@ void inform_router_ip(char *router_ip, int tcpport)
 		perror("Phase 1: Error in sendto() for client server");
 
 }
+*/
 
 void send_message_routers(struct command_line_args *object)
 {
@@ -200,9 +200,7 @@ void send_message_routers(struct command_line_args *object)
 		router_ip[len - 1] = '\0';
 		printf("%s,",router_ip);
 		LOG(stdout, LOGL, "Router Ip : %s, TCP Port: %d",router_ip, object->tcpport);
-		inform_router_ip(router_ip, object->tcpport);
-	//	sleep(2);
-	//	send_start_marking_msg(router_ip, object->tcpport);
+		send_start_marking_msg(router_ip, object->tcpport);
 	}
 	
 }

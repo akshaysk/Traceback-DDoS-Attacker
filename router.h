@@ -20,8 +20,17 @@ struct ip_tcp_port
 {
 	int tcp_port;
 	char *ip_addr;
+	int thread_id;
 };
 
+struct thread_list
+{
+	pthread_t thread;
+	int thread_id;
+	struct thread_list *next;
+};
+
+struct thread_list *thread_list_head = NULL;
 FILE *fp_log;
 int no_of_threads;
 #endif
