@@ -18,4 +18,11 @@ struct command_line_args
 };
 FILE *fp_log;
 pthread_t udp_traceback, attack_checker;
+
+void send_start_marking_msg(char *router_ip, int tcpport);
+void send_stop_marking_msg(char *router_ip, int tcpport);
+void receive_udp_traceback(struct command_line_args *object);
+void check_for_attack(struct command_line_args *object);
+void send_startMark_message_routers(struct command_line_args *object);
+void send_stopMark_message_routers(struct command_line_args *object);
 #endif

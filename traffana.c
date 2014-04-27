@@ -336,7 +336,7 @@ void send_attack_notification()
 	if(sendto(fd, my_message, strlen(my_message), 0, (struct sockaddr *)&destAddr, sizeof(destAddr)) < 0) 
 		LOG(stderr, ERROR, "Error: Error in sendto() for traffana. Failed to send Attack Detected UDP message to endhost tool");
 
-	LOG(stdout, LOGL, "Log: The Attack Detected message is successfully sent to endhost tool");
+	LOG(stdout, LOGL, "Traffana: The Attack Detected message is successfully sent to endhost tool");
 
 }
 void count_flow(u_char *object, const struct sniff_ip *ip, const u_char *packet)
@@ -405,6 +405,7 @@ void count_flow(u_char *object, const struct sniff_ip *ip, const u_char *packet)
 		strcat(hostname, ".attackinfo");	
 		fp_log = fopen(hostname, "w");
 //		LOG(fp_log, LOGL, "Attack detected!!!");
+		LOG(stdout, LOGL, "Attack Detected!!!");
 		LOG(fp_log, LOGL, "%f %f %d %d %d",curtime, ref_time, total_count, total_bytes, no_of_flows);
 		fflush(fp_log);
 		send_attack_notification();

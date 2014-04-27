@@ -21,6 +21,7 @@ struct ip_tcp_port
 	int tcp_port;
 	char *ip_addr;
 	int thread_id;
+	struct command_line_args *cmd_object;
 };
 
 struct thread_list
@@ -28,6 +29,12 @@ struct thread_list
 	pthread_t thread;
 	int thread_id;
 	struct thread_list *next;
+};
+
+struct marker_structure
+{
+	struct command_line_args *cmd_object;
+	char *ip_address, *victim_ip_address;
 };
 
 struct thread_list *thread_list_head = NULL;

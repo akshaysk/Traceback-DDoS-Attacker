@@ -20,7 +20,7 @@
 #define MAXIPADDRLEN	20
 #define HOSTNAME	128
 #define INFINITY	2147483647
-#define BUFSIZE		25
+#define BUFSIZE		40
 
 struct sniff_ip {
 	u_char ip_vhl;		/* version << 4 | header length >> 2 */
