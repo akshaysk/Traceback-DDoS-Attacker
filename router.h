@@ -35,6 +35,7 @@ struct marker_structure
 {
 	struct command_line_args *cmd_object;
 	char *ip_address, *victim_ip_address;
+	pcap_t *handle;
 };
 
 struct thread_list *thread_list_head = NULL;

@@ -300,32 +300,36 @@ void send_attack_notification()
 	char my_message[BUFSIZE], buffer[BUFSIZE];
 	struct hostent *client_ip_addr, *dest_ip_addr;
 	struct in_addr * address;
-	memset(my_message,0,BUFSIZE);
-	memset(buffer,0,BUFSIZE);
+	char hostname[HOSTNAME];
+
+	memset(my_message,'\0',BUFSIZE);
+	memset(buffer,'\0',BUFSIZE);
+	memset(hostname, '\0', HOSTNAME);
 
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) 
 	{ 
 		perror("Phase 2: Error cannot create client server socket\n");
 		exit(0);
 	}
-	memset((char *)&clientAddr, 0, sizeof(clientAddr)); 
+	memset((char *)&clientAddr, 0, sizeof(struct sockaddr_in)); 
 	clientAddr.sin_family = AF_INET; 
-	client_ip_addr = gethostbyname("localhost");
+	gethostname(hostname, HOSTNAME);
+	client_ip_addr = gethostbyname(hostname);
 	address = (struct in_addr *)client_ip_addr->h_addr;
 
 	clientAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*address));
 	port_no = 62089;
 	clientAddr.sin_port = htons(port_no);
 
-	if(bind(fd, (struct sockaddr *)&clientAddr, sizeof(clientAddr)) < 0) 
+	if(bind(fd, (struct sockaddr *)&clientAddr, sizeof(struct sockaddr_in)) < 0) 
 	{ 
 		perror("\nPhase 2: Client bind failed\n");
 		exit(0);
 	}
 
-	memset((char *)&destAddr, 0, sizeof(destAddr)); 
+	memset((char *)&destAddr, 0, sizeof(struct sockaddr_in)); 
 	destAddr.sin_family = AF_INET; 
- 	dest_ip_addr = gethostbyname("localhost");
+ 	dest_ip_addr = gethostbyname(hostname);
 	address = (struct in_addr *)dest_ip_addr->h_addr;
 
 	destAddr.sin_addr.s_addr = inet_addr(inet_ntoa(*address));
@@ -333,7 +337,7 @@ void send_attack_notification()
 	destAddr.sin_port = htons(61089);
 
 	snprintf(my_message,BUFSIZE,"Attack_Detected");	
-	if(sendto(fd, my_message, strlen(my_message), 0, (struct sockaddr *)&destAddr, sizeof(destAddr)) < 0) 
+	if(sendto(fd, my_message, strlen(my_message), 0, (struct sockaddr *)&destAddr, sizeof(struct sockaddr_in)) < 0) 
 		LOG(stderr, ERROR, "Error: Error in sendto() for traffana. Failed to send Attack Detected UDP message to endhost tool");
 
 	LOG(stdout, LOGL, "Traffana: The Attack Detected message is successfully sent to endhost tool");
@@ -401,7 +405,7 @@ void count_flow(u_char *object, const struct sniff_ip *ip, const u_char *packet)
 	{
 		char hostname[HOSTNAME];
 		memset(hostname, 0, HOSTNAME);
-		gethostname(hostname, sizeof(hostname));
+		gethostname(hostname, HOSTNAME);
 		strcat(hostname, ".attackinfo");	
 		fp_log = fopen(hostname, "w");
 //		LOG(fp_log, LOGL, "Attack detected!!!");

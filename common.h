@@ -13,15 +13,15 @@
 #include <netinet/ip.h>
 #include <netdb.h>
 #include <pthread.h>
-
+#include <net/ethernet.h>
 #define MAXLOGSIZE	256
 #define SIZE_ETHERNET 14
+#define SIZE_WIRELESS	24
 #define IP_HL(ip)		(((ip)->ip_vhl) & 0x0f)
 #define MAXIPADDRLEN	20
 #define HOSTNAME	128
 #define INFINITY	2147483647
-#define BUFSIZE		40
-
+#define BUFSIZE		80
 struct sniff_ip {
 	u_char ip_vhl;		/* version << 4 | header length >> 2 */
 	u_char ip_tos;		/* type of service */
@@ -68,5 +68,9 @@ struct sniff_udp {
 	u_short th_sum;
 };
 
-
+struct sniff_ethernet {
+	u_char ether_dhost[ETHER_ADDR_LEN]; /* Destination host address */
+	u_char ether_shost[ETHER_ADDR_LEN]; /* Source host address */
+	u_short ether_type; /* IP? ARP? RARP? etc */
+};
 #endif
