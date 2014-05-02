@@ -1,7 +1,7 @@
 #include "router.h"
 #include "log.h"
-pthread_t marker_thread, listener_for_stop;
 
+struct logger_structure logger_obj;
 void parse_command_line(int argc, char **argv, struct command_line_args *ob)
 {
 	int opt = 0, longIndex = 0;
@@ -50,8 +50,23 @@ void parse_command_line(int argc, char **argv, struct command_line_args *ob)
 }
 
 
+void logger_method()
+{
+	double ref_time;
+	ref_time = current_time; 
+	while(1)
+	{
+		usleep(USEC(logger_obj.epoch));
+		ref_time = ref_time + USEC(logger_obj.epoch);
+		pthread_mutex_lock(&traceback);
+		LOG(fp_log, LOGL, "%f %s %d",SEC(ref_time), logger_obj.victim_ip, no_of_traceback_packets);
+		no_of_traceback_packets = 0;
+		pthread_mutex_unlock(&traceback);
+	}	
 
-void create_udp_traceback(char *ip_addr, char *attacker_ip_addr, int udpport, char *victim_ip_addr)
+}
+
+void create_udp_traceback(char *ip_addr, char *attacker_ip_addr, int udpport, char *victim_ip_addr, double epoch)
 {
 
 	struct sockaddr_in routerAddr,victimAddr;
@@ -98,6 +113,22 @@ void create_udp_traceback(char *ip_addr, char *attacker_ip_addr, int udpport, ch
 
 	LOG(stdout, LOGL, "Log: Traceback message is successfully sent to endhost tool(IP: %s, Port: %d)",victim_ip_addr, udpport);
 
+
+	if(first_traceback_packet == 0)
+	{
+		gettimeofday(&curtime, NULL);
+		current_time = TIME_IN_USEC(curtime);
+		LOG(fp_log, LOGL, "%f startedMarking \'%s\'",SEC(current_time), my_message);
+		memset(logger_obj.victim_ip, '\0', MAXIPADDRLEN);
+		sprintf(logger_obj.victim_ip,"%s",victim_ip_addr);
+		logger_obj.epoch = epoch;
+		pthread_create(&logger_thread, 0, (void *)logger_method, NULL);
+		first_traceback_packet = 1;
+	}
+
+	pthread_mutex_lock(&traceback);
+	no_of_traceback_packets++;
+	pthread_mutex_unlock(&traceback);	
 	close(fd);
 
 }
@@ -122,13 +153,11 @@ void read_and_mark_packets(u_char *obj, const struct pcap_pkthdr *pkthdr, const 
 	}
 	if(strncmp(victim_ip_addr, marker_obj->victim_ip_address , strlen(inet_ntoa(ip->ip_dst))) == 0)
 	{
-//		sprintf(ip_src_addr, "%s",inet_ntoa(ip->ip_src));
-//		LOG(stdout, LOGL, "%s",ip_src_addr);
 		LOG(stdout, LOGL, "Attacker IP: %s\t Victim IP: %s", attacker_ip_addr, victim_ip_addr);
 		double prob_var = rand()/RAND_MAX;
 		if(prob_var >= 0 && prob_var < marker_obj->cmd_object->prob)
 		{
-			create_udp_traceback(marker_obj->ip_address, attacker_ip_addr, marker_obj->cmd_object->udpport, victim_ip_addr);
+			create_udp_traceback(marker_obj->ip_address, attacker_ip_addr, marker_obj->cmd_object->udpport, victim_ip_addr, marker_obj->cmd_object->epoch);
 		}
 	}
 }
@@ -206,7 +235,8 @@ void wait_for_startMarking(struct command_line_args *object)
 		LOG(stdout, LOGL, "victim ip %s",victim_ip_address);
 		if(strncmp(sign, "startMarking", strlen(sign)) == 0)
 		{
-			LOG(stdout, LOGL, "Here");
+			gettimeofday(&curtime, NULL);
+			LOG(fp_log, LOGL, "%f gotMarking %s %s", SEC(TIME_IN_USEC(curtime)), victim_ip_address, buffer);
 			startMarking(object, ip_addr, victim_ip_address);
 		}
 	close(fd);
@@ -262,6 +292,7 @@ void listening_for_stopMark(struct command_line_args *object)
 		if(strncmp(buffer, "stopMarking", strlen(buffer)) == 0)
 		{
 			pthread_cancel(marker_thread);
+			pthread_cancel(logger_thread);
 		}
 	close(fd);
 
@@ -272,13 +303,20 @@ int main(int argc, char **argv)
 {
 
 	struct command_line_args object;
+	char hostname[HOSTNAME];
+	memset(hostname, 0, HOSTNAME);
+	gethostname(hostname, HOSTNAME);
+	strcat(hostname, ".endhost.log");	
+
+	fp_log = fopen(hostname, "w");
+
 	parse_command_line(argc, argv, &object);
 	pthread_create(&marker_thread, 0, (void *)wait_for_startMarking, &object);
 	pthread_create(&listener_for_stop, 0, (void *)listening_for_stopMark, &object);
 
 	pthread_join(marker_thread, 0);
 	pthread_join(listener_for_stop, 0);
-
+	pthread_join(logger_thread, 0);
 	return 0;
 }
 

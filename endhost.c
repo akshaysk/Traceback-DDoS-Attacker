@@ -55,6 +55,7 @@ void send_start_marking_msg(char *router_ip, int tcpport)
 	struct sockaddr_in router_addr;
 	struct hostent *router_ip_addr;
 	struct in_addr * address;
+	struct timeval curtime;
 	socklen_t alen = sizeof(struct sockaddr_in);
 	
 	char my_message[BUFSIZE];
@@ -86,6 +87,8 @@ void send_start_marking_msg(char *router_ip, int tcpport)
 		exit(0);
 	}
 	LOG(stdout, LOGL, "EndHost: StartMarking message is sent to Router(IP: %s, TCP: %d)",router_ip, tcpport);
+	gettimeofday(&curtime, NULL);	
+	LOG(fp_log, LOGL, "%f startMarking %s \'%s\'", SEC(TIME_IN_USEC(curtime)), router_ip,  my_message);
 	close(fd);
 
 }
@@ -142,6 +145,10 @@ struct attacker_list *create_attackerlist_node(char *router_ip_addr, char *attac
 	newNode->routerhead = (struct router_list *)malloc(sizeof(struct router_list));
 	memset(newNode->routerhead,'\0',sizeof(struct router_list));
 	strncpy(newNode->routerhead->router_ip, router_ip_addr, strlen(router_ip_addr));
+	
+	struct timeval curtime;
+	gettimeofday(&curtime, NULL);
+	LOG(fp_log, LOGL, "%f %s distance", SEC(TIME_IN_USEC(curtime)), router_ip_addr);
 	newNode->routerhead->frequency = 1;
 	newNode->routerhead->next = NULL;
 	newNode->no_of_routers = 1;
@@ -184,6 +191,9 @@ void Create_Attacker_List(char *router_ip, char *attacker_ip, char * victim_ip)
 					new_routerlist->next = p->routerhead;
 					p->routerhead = new_routerlist;
 					p->no_of_routers++;
+					struct timeval curtime;
+					gettimeofday(&curtime, NULL);
+					LOG(fp_log, LOGL, "%f %s distance", SEC(TIME_IN_USEC(curtime)), router_ip);
 					goto end;
 				}
 			}
@@ -248,19 +258,25 @@ void Path_Reconstruction()
 
 	struct attacker_list *p = routerAttackerHead;
 	struct router_list *q;
-	
+	struct hostent *router_ip_address;
 	while( p != NULL)
 	{
 
-		LOG(stdout, LOGL, "Victim:%s",p->victim_ip_addr);
-		LOG(stdout, LOGL, "Router:");
+//		LOG(stdout, LOGL, "Victim:%s",p->victim_ip_addr);
+//		LOG(stdout, LOGL, "Router:");
+		fprintf(stdout, "\n%s,", p->victim_ip_addr);
 		while( p->routerhead != NULL )
 		{
 			q = source_with_max_freq(p->routerhead);
-			LOG(stdout, LOGL, "%s,", q->router_ip);
+//			LOG(stdout, LOGL, "%s,", q->router_ip);
+			router_ip_address = gethostbyname(q->router_ip);
+			fprintf(stdout, "%s,", router_ip_address->h_name);
+//			fprintf(stdout, "%s", gethostnameq->routerhead);
 			p->routerhead = delete_from_source_list(q, p->routerhead);
 		}
-		LOG(stdout, LOGL, "Attacker:%s", p->attacker_ip_addr);
+//		LOG(stdout, LOGL, "Attacker:%s", p->attacker_ip_addr);
+		fprintf(stdout, "%s", p->attacker_ip_addr);
+		fflush(stdout);
 		p = p->next;
 	}	
 }
@@ -315,7 +331,7 @@ void receive_udp_traceback(struct command_line_args *object)
 		}
 		if(attack_indication == 0)
 			i--;
-		LOG(stdout, LOGL,"\nEndhost has received traceback from Router\n, %s",traceback_msg);
+		LOG(stdout, LOGL,"Endhost has received traceback from Router, %s",traceback_msg);
 		sscanf(traceback_msg, "%s %s %s %s", sign, router_ip, attacker_ip, victim_ip);
 		Create_Attacker_List(router_ip, attacker_ip, victim_ip);
 	}

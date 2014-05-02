@@ -22,6 +22,9 @@
 #define HOSTNAME	128
 #define INFINITY	2147483647
 #define BUFSIZE		80
+#define TIME_IN_USEC(tv)	((double)(tv.tv_sec*1000000L + tv.tv_usec))
+#define SEC(tv)		tv/1000000L
+#define USEC(tv)	(1000000L)*tv
 struct sniff_ip {
 	u_char ip_vhl;		/* version << 4 | header length >> 2 */
 	u_char ip_tos;		/* type of service */

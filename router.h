@@ -38,7 +38,17 @@ struct marker_structure
 	pcap_t *handle;
 };
 
+struct logger_structure
+{
+	double epoch;
+	char victim_ip[MAXIPADDRLEN];
+};
+
+pthread_t marker_thread, listener_for_stop, logger_thread;
 struct thread_list *thread_list_head = NULL;
 FILE *fp_log;
-int no_of_threads;
+int no_of_threads, no_of_traceback_packets, first_traceback_packet;
+double current_time;
+struct timeval curtime;
+pthread_mutex_t traceback = PTHREAD_MUTEX_INITIALIZER;
 #endif
